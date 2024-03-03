@@ -1,5 +1,5 @@
-use hello_wgpu::run;
+use hello_wgpu::spawn;
 
 fn main() {
-    run();
+    spawn();
 }

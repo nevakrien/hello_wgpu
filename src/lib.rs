@@ -9,17 +9,22 @@ use wasm_bindgen::prelude::*;
 
 
 #[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
-pub fn run() {
+pub fn spawn() {
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
             std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-            console_log::init_with_level(log::Level::Warn).expect("Couldn't initialize logger");
-            log::info!("Setup of logging ready");
+            //console_log::init_with_level(log::Level::Warn).expect("Couldn't initialize logger");
+            console_log::init_with_level(log::Level::Info).expect("Couldn't initialize logger");
+            //log::info!("Setup of logging ready");
+
+            //use web_sys::console;
+            //console::log_1(&JsValue::from_str("useless from web_sys"));
         } else {
             env_logger::init();
         }
     }
 
+    log::info!("Setup of logging ready");
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
