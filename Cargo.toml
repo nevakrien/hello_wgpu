@@ -11,6 +11,7 @@ env_logger = "0.10"
 log = "0.4"
 wgpu = "0.18"
 cfg-if = "1"
+pollster = "0.3"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

@@ -12,4 +12,4 @@ RUST_LOG=info cargo run
 
 wasm-pack build --target web -d website/pkg
 http-server website/
-http-server website/ -c #for dev when we dont want cach
+http-server website/ -c-1 #for dev when we dont want cach

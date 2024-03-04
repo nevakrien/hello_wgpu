@@ -1,5 +1,6 @@
-use hello_wgpu::spawn;
+use hello_wgpu::run;
+
 
 fn main() {
-    spawn();
+     pollster::block_on(run());
 }
