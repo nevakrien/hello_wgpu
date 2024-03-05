@@ -9,6 +9,83 @@ use wasm_bindgen::prelude::*;
 
 use winit::window::Window;
 
+#[derive(Clone, Copy,Debug)]
+enum Mode {
+    Mode1,
+    Mode2,
+}
+
+fn switch_mode(current_mode: Mode) -> Mode {
+    //println!("Current mode: {:?}", current_mode);
+    match current_mode {
+        Mode::Mode1 => Mode::Mode2,
+        Mode::Mode2 => Mode::Mode1,
+    }
+}
+
+use std::path::Path;
+use std::fs;
+
+fn load_pipline(shader_file: &str,device: &wgpu::Device,config: &wgpu::SurfaceConfiguration,) ->wgpu::RenderPipeline{
+        //shader stuff
+        // Read the shader file at runtime
+        let shader_path = Path::new(shader_file);
+        let shader_code = fs::read_to_string(shader_path).expect("Failed to read shader file");
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Shader"),
+            source: wgpu::ShaderSource::Wgsl(shader_code.into()),
+        });
+
+        let render_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: None,//Some("Render Pipeline Layout"),
+                bind_group_layouts: &[],
+                push_constant_ranges: &[],
+            });
+
+
+        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Render Pipeline"),
+            layout: Some(&render_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: "vs_main", // 1.
+                buffers: &[], // 2.
+            },
+            fragment: Some(wgpu::FragmentState { // 3.
+                module: &shader,
+                entry_point: "fs_main",
+                targets: &[Some(wgpu::ColorTargetState { // 4.
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList, // 1.
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw, // 2.
+                cull_mode: Some(wgpu::Face::Back),
+                // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
+                polygon_mode: wgpu::PolygonMode::Fill,
+                // Requires Features::DEPTH_CLIP_CONTROL
+                unclipped_depth: false,
+                // Requires Features::CONSERVATIVE_RASTERIZATION
+                conservative: false,
+            },
+            depth_stencil: None, // 1.
+            multisample: wgpu::MultisampleState {
+                count: 1, // 2.
+                mask: !0, // 3.
+                alpha_to_coverage_enabled: false, // 4.
+            },
+            multiview: None, // 5.
+        });
+
+        return render_pipeline;
+}
+
 struct State {
     surface: wgpu::Surface,
     device: wgpu::Device,
@@ -19,6 +96,14 @@ struct State {
     // it gets dropped after it as the surface contains
     // unsafe references to the window's resources.
     window: Window,
+
+    color: wgpu::Color,
+
+    render_pipeline: wgpu::RenderPipeline,
+    render_pipeline2:wgpu::RenderPipeline,
+    mode: Mode
+
+
 }
 
 impl State {
@@ -94,6 +179,61 @@ impl State {
         surface.configure(&device, &config);
         //let modes = &surface_caps.present_modes; //optional
 
+        let color=wgpu::Color {r: 0.1,g: 0.2,b: 0.3,a: 1.0,};
+
+        let render_pipeline=load_pipline("shader.wgsl",&device,&config);
+        let render_pipeline2=load_pipline("my_shader.wgsl",&device,&config);
+        // //shader stuff
+        // let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
+        // let render_pipeline_layout =
+        //     device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        //         label: Some("Render Pipeline Layout"),
+        //         bind_group_layouts: &[],
+        //         push_constant_ranges: &[],
+        //     });
+
+
+        // let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        //     label: Some("Render Pipeline"),
+        //     layout: Some(&render_pipeline_layout),
+        //     vertex: wgpu::VertexState {
+        //         module: &shader,
+        //         entry_point: "vs_main", // 1.
+        //         buffers: &[], // 2.
+        //     },
+        //     fragment: Some(wgpu::FragmentState { // 3.
+        //         module: &shader,
+        //         entry_point: "fs_main",
+        //         targets: &[Some(wgpu::ColorTargetState { // 4.
+        //             format: config.format,
+        //             blend: Some(wgpu::BlendState::REPLACE),
+        //             write_mask: wgpu::ColorWrites::ALL,
+        //         })],
+        //     }),
+
+        //     primitive: wgpu::PrimitiveState {
+        //         topology: wgpu::PrimitiveTopology::TriangleList, // 1.
+        //         strip_index_format: None,
+        //         front_face: wgpu::FrontFace::Ccw, // 2.
+        //         cull_mode: Some(wgpu::Face::Back),
+        //         // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
+        //         polygon_mode: wgpu::PolygonMode::Fill,
+        //         // Requires Features::DEPTH_CLIP_CONTROL
+        //         unclipped_depth: false,
+        //         // Requires Features::CONSERVATIVE_RASTERIZATION
+        //         conservative: false,
+        //     },
+        //     depth_stencil: None, // 1.
+        //     multisample: wgpu::MultisampleState {
+        //         count: 1, // 2.
+        //         mask: !0, // 3.
+        //         alpha_to_coverage_enabled: false, // 4.
+        //     },
+        //     multiview: None, // 5.
+        // });
+
+        let mode=Mode::Mode1;
+
         Self {
             window,
             surface,
@@ -101,6 +241,10 @@ impl State {
             queue,
             config,
             size,
+            color,
+            render_pipeline,
+            render_pipeline2,
+            mode,
         }
 
     }
@@ -120,25 +264,45 @@ impl State {
 
 
     fn input(&mut self, event: &WindowEvent) -> bool {
-        false
+        match event{
+            WindowEvent::CursorMoved{ position,.. } => {
+                // let normalized_x = position.x as f64 / self.size.width as f64;
+                // let normalized_y = position.y as f64 / self.size.height as f64;
+                    
+                // self.color = wgpu::Color {
+                //     r: normalized_x,
+                //     g: normalized_y,
+                //     b: 0.3, // Fixed blue value for demonstration
+                //     a: 1.0,
+                // };
+
+                //println!("Updated color: r={}, g={}, b={}", self.color.r, self.color.g, self.color.b);
+
+                true
+            },
+            WindowEvent::KeyboardInput {
+                input:
+                    KeyboardInput {
+                        state: ElementState::Pressed,
+                        virtual_keycode: Some(VirtualKeyCode::Space),
+                        ..
+                    },
+            ..} => {
+                
+                self.mode=switch_mode(self.mode);
+                true
+            },
+
+            _ => false  
+        }
+        //false
         //todo!()
     }
 
     fn update(&mut self) {
         //todo!()
     }
-
-    // fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-    //     let output = self.surface.get_current_texture()?;
-    //     let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-    //     let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-    //         label: Some("Render Encoder"),
-    //     });
-
-
-    // }
-
+    
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         // Acquire the current texture from the swap chain (surface)
         let output = self.surface.get_current_texture()?;
@@ -151,18 +315,13 @@ impl State {
 
         // Begin the render pass
         {
-            let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view, // Use the view of the current texture
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
-                            a: 1.0,
-                        }),
+                        load: wgpu::LoadOp::Clear(self.color),
                         store: wgpu::StoreOp::Store,
                     },
                 })],
@@ -170,6 +329,15 @@ impl State {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
+
+            let render_pipeline = match self.mode{
+                Mode::Mode1=>&self.render_pipeline,
+                Mode::Mode2=>&self.render_pipeline2,
+            };
+
+            render_pass.set_pipeline(render_pipeline); // 2.
+            render_pass.draw(0..3, 0..1); // 3.
+
         } // The render pass is dropped here, ending it
 
         // Submit the command buffer to the queue
@@ -253,7 +421,7 @@ pub async fn run() {
                     // new_inner_size is &&mut so we have to dereference it twice
                     state.resize(**new_inner_size);
                 },
-                _ => {}
+                _ => {state.input(event);}
             },
 
             Event::RedrawRequested(window_id) if window_id == state.window().id() => {
