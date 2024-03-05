@@ -23,23 +23,28 @@ fn switch_mode(current_mode: Mode) -> Mode {
     }
 }
 
-//use std::path::Path;
-//use std::fs;
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+struct Vertex {
+    position: [f32; 3],
+    color: [f32; 3],
+}
+
+ 
+
+ 
 
 macro_rules! load_pipline {
     ($shader_file:expr, $device:expr, $config:expr) => {{
         // Include the shader code at compile time
         let shader_code = include_str!($shader_file);
         // Call the modified function with the included shader code
-        load_pipeline_from_shader(shader_code, $device, $config)
+        make_pipeline(shader_code, $device, $config)
     }};
 }
 
-fn load_pipeline_from_shader(shader_code: &str,device: &wgpu::Device,config: &wgpu::SurfaceConfiguration,) ->wgpu::RenderPipeline{
+fn make_pipeline(shader_code: &str,device: &wgpu::Device,config: &wgpu::SurfaceConfiguration,) ->wgpu::RenderPipeline{
         //shader stuff
-        // Read the shader file at runtime
-        // let shader_path = std::path::Path::new(shader_file);
-        // let shader_code = std::fs::read_to_string(shader_path).expect("Failed to read shader file");
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(shader_code.into()),
@@ -275,18 +280,26 @@ impl State {
     fn input(&mut self, event: &WindowEvent) -> bool {
         match event{
             WindowEvent::CursorMoved{ position,.. } => {
-                // let normalized_x = position.x as f64 / self.size.width as f64;
-                // let normalized_y = position.y as f64 / self.size.height as f64;
-                    
-                // self.color = wgpu::Color {
-                //     r: normalized_x,
-                //     g: normalized_y,
-                //     b: 0.3, // Fixed blue value for demonstration
-                //     a: 1.0,
-                // };
+                match(self.mode){//want to do mode1 mode2
+                    Mode::Mode2 =>{
+                        let normalized_x = position.x as f64 / self.size.width as f64;
+                        let normalized_y = position.y as f64 / self.size.height as f64;
+                            
+                        self.color = wgpu::Color {
+                            r: normalized_x,
+                            g: normalized_y,
+                            b: 0.3, // Fixed blue value for demonstration
+                            a: 1.0,
+                        };
+                    },
 
+                    Mode::Mode1 =>{
+                        self.color=wgpu::Color {r: 0.1,g: 0.2,b: 0.3,a: 1.0,};
+                    }
+                }
                 //println!("Updated color: r={}, g={}, b={}", self.color.r, self.color.g, self.color.b);
-
+                //adding this
+                
                 true
             },
             WindowEvent::KeyboardInput {
@@ -346,6 +359,9 @@ impl State {
 
             render_pass.set_pipeline(render_pipeline); // 2.
             render_pass.draw(0..3, 0..1); // 3.
+            //render_pass.draw(0..5, 0..3); // dosent change anyting.
+            //render_pass.draw(0..3, 0..5); // breaks.
+            //render_pass.draw(0..3, 0..3);
 
         } // The render pass is dropped here, ending it
 
