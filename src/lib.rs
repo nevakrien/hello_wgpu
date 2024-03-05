@@ -23,14 +23,23 @@ fn switch_mode(current_mode: Mode) -> Mode {
     }
 }
 
-use std::path::Path;
-use std::fs;
+//use std::path::Path;
+//use std::fs;
 
-fn load_pipline(shader_file: &str,device: &wgpu::Device,config: &wgpu::SurfaceConfiguration,) ->wgpu::RenderPipeline{
+macro_rules! load_pipline {
+    ($shader_file:expr, $device:expr, $config:expr) => {{
+        // Include the shader code at compile time
+        let shader_code = include_str!($shader_file);
+        // Call the modified function with the included shader code
+        load_pipeline_from_shader(shader_code, $device, $config)
+    }};
+}
+
+fn load_pipeline_from_shader(shader_code: &str,device: &wgpu::Device,config: &wgpu::SurfaceConfiguration,) ->wgpu::RenderPipeline{
         //shader stuff
         // Read the shader file at runtime
-        let shader_path = Path::new(shader_file);
-        let shader_code = fs::read_to_string(shader_path).expect("Failed to read shader file");
+        // let shader_path = std::path::Path::new(shader_file);
+        // let shader_code = std::fs::read_to_string(shader_path).expect("Failed to read shader file");
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(shader_code.into()),
@@ -181,8 +190,8 @@ impl State {
 
         let color=wgpu::Color {r: 0.1,g: 0.2,b: 0.3,a: 1.0,};
 
-        let render_pipeline=load_pipline("shader.wgsl",&device,&config);
-        let render_pipeline2=load_pipline("my_shader.wgsl",&device,&config);
+        let render_pipeline=load_pipline!("shader.wgsl",&device,&config);
+        let render_pipeline2=load_pipline!("my_shader.wgsl",&device,&config);
         // //shader stuff
         // let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
         // let render_pipeline_layout =
